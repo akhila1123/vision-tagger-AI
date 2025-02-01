@@ -1,0 +1,54 @@
+from google.cloud import vision
+import json
+
+def tag_image(image_path):
+    # Initialize the Vision API client
+    client = vision.ImageAnnotatorClient()
+
+    # Load the image
+    with open(image_path, 'rb') as image_file:
+        content = image_file.read()
+    image = vision.Image(content=content)
+
+    # Perform label detection
+    response = client.label_detection(image=image)
+    labels = response.label_annotations
+
+    # Perform object detection
+    object_response = client.object_localization(image=image)
+    objects = object_response.localized_object_annotations
+
+    # Extract metadata
+    metadata = {
+        "labels": [],
+        "objects": []
+    }
+
+    # Append label information
+    for label in labels:
+        metadata["labels"].append({
+            "description": label.description,
+            "score": label.score
+        })
+
+    # Append object information
+    for obj in objects:
+        metadata["objects"].append({
+            "name": obj.name,
+            "score": obj.score,
+            "bounding_poly": [
+                {
+                    "x": vertex.x,
+                    "y": vertex.y
+                } for vertex in obj.bounding_poly.normalized_vertices
+            ]
+        })
+
+    # Convert metadata to JSON
+    metadata_json = json.dumps(metadata, indent=4)
+    return metadata_json
+
+# Example usage
+image_path = 'path_to_your_image.jpg'
+metadata_json = tag_image(image_path)
+print(metadata_json)
